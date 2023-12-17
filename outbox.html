@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+    <title>Emails</title>
+    <style>
+        @media print {
+            body * {
+                visibility: hidden;
+            }
+
+            #print-section, #print-section * {
+                visibility: visible;
+            }
+
+            #print-section {
+                position: absolute;
+                left: 0;
+                top: 0;
+            }
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f5f5f5;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: start;
+            height: 100vh;
+        }
+
+        #headerbar {
+            min-width: 90%;
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px;
+        }
+
+        #navbar {
+            min-width: 90%;
+            display: flex;
+            flex-direction: row;
+            align-items: start;
+        }
+
+        #email-controls{
+            min-width: 85%;
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+
+        #outbox {
+            background-color: #fff;
+            padding: 20px;
+            /* margin-top: 1rem; */
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            width: 85%;
+
+        }
+
+        #email-list {
+            list-style-type: none;
+            align-items: start;
+            justify-content: start;
+            margin-right: 40px;
+        }
+
+        .email-box {
+            /* color: #f5f5f5; */
+            display: flex;
+            flex-direction: row;
+            margin: 10px;
+            padding: 10px;
+        }
+
+        .email{
+            /* color: #f5f5f5; */
+            display: block;
+            /* flex-direction: column; */
+            /* margin: 10px; */
+            padding: 10px;
+            text-align: left;
+            margin-left: 10px;
+            width: 100%;
+        }
+
+        #email {
+            background-color: #fff;
+            padding: 20px;
+            /* margin-top: 1rem; */
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            text-align: left;
+            width: 85%;
+        }
+
+        #print-section{
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            text-align: left;
+            align-items: left;
+        }
+
+        #print-section h3,h5{
+            margin: 0;
+        }
+
+        #logout_but {
+            background-color: #007BFF;
+            color: #fff;
+            padding: 10px;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+
+        #logout_but:hover {
+            background-color: #0056b3;
+        }
+
+        .btn {
+            background-color: #007BFF;
+            border: none;
+            color: white;
+            padding: 12px 16px;
+            border-radius: 3px;
+            margin: 3px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        /* Darker background on mouse-over */
+        .btn:hover {
+            background-color: #0056b3;
+        }
+
+        
+    </style>
+</head>
+
+<body>
+    <div id="headerbar">
+                <i class="fa fa-envelope-open-o" aria-hidden="true"></i>
+        <form  action="logmeout" method="get">
+            <button id = "logout_but" type="submit">Logout</button>
+        </form>
+    </div>
+
+    <div id = "navbar">
+            <form action="compose" method="get">
+                <button type="submit" class="btn"><i class="fa fa-pencil-square-o"></i></button>
+            </form>
+            <button id = "del_but" onclick="deleteSelectedEmails()" class="btn"><i class="fa fa-trash"></i></button>
+
+
+            <div id="email-controls" style="display: none;">
+                <div>
+                    <button id="delete_button" onclick="deleteSelectedEmail()" class="btn"><i class="fa fa-trash"></i></button>
+                    <button onclick="printContent()" class="btn"><i class="fa fa-print"></i></button>
+                </div>
+                <div>
+                    <button id="close_me" onclick="showOutbox()" class="btn"><i class="fa fa-close"></i></button>
+                </div>
+            </div>
+    </div>
+    
+
+    <div id="outbox">
+        <h1>Sent Mail</h1>
+        <ul id="email-list"></ul>    
+    </div>
+
+    <div id="email" style="display: none;">
+        <main id="print-section">
+            <div class = "print-line">
+                <h1 id = "subject"></h1>
+            </div>
+            <div class = "print-line">
+                <h5 id = "to"></h5>
+            </div>
+            <div class = "print-line">
+                <h5 id = "timestamp"></h5>
+            </div>
+            <div class = "print-line">
+                <p id = "message"></p>
+            </div>
+        </main>
+
+    </div>
+
+    <script>
+    
+    let cur_email = 0;
+   
+    // Function to fetch and display emails
+    async function fetchEmails() {
+    const response = await fetch('/get-sent-emails');
+    const emails = await response.json();
+
+    const emailList = document.getElementById('email-list');
+    emailList.innerHTML = '';
+
+    emails.forEach(email => {
+        const listItem = document.createElement('li');
+        listItem.innerHTML = `
+            <div class = "email-box" >
+                <input type="checkbox" class="email-checkbox" data-id="${email.id}">
+                <div class = "email" onclick="showEmailDetail(${email.id})">
+                    <strong>Subject: ${email.subject} </strong><br>
+                    <strong>To:</strong> ${email.to_email}<br>                    
+                    <strong>Date:</strong> ${email.timestamp}<br>
+                    
+                <div>
+            </div>
+            
+        `;
+        assignRandomColor(listItem);
+        emailList.insertBefore(listItem, emailList.firstChild);
+    });
+    }
+    fetchEmails();
+
+    function assignRandomColor(element) {
+        // List of possible colors
+        const colors = ["#ff0000", "#00ff00", "#0000ff", "#ffff00", "#ff00ff", "#00ffff"];
+
+        // Get a random index from the colors array
+        const randomIndex = Math.floor(Math.random() * colors.length);
+
+        // Get the color from the array
+        const randomColor = colors[randomIndex];
+
+        // Set the background color of the element
+        element.style.backgroundColor = randomColor;
+    }
+
+
+    // Function to fetch and display a particular email
+    async function showEmailDetail(id){
+        cur_email = id        
+        const response = await fetch('/email/' + id);
+        const email = await response.json();
+        console.log(email);
+        document.getElementById('subject').innerHTML = `${email.subject}`
+        document.getElementById('to').innerHTML = `${email.to_email}`
+        document.getElementById('timestamp').innerHTML = `${email.timestamp}`
+        document.getElementById('message').innerHTML = `${email.message}`
+        showEmailPage()
+        console.log("i ran", id);
+    }
+
+    
+    // Function to print contents of email
+    function printContent() {
+            window.print();
+        }
+
+    // Function to delete selected emails
+    async function deleteSelectedEmails() {
+    const checkboxes = document.querySelectorAll('.email-checkbox:checked');
+    const emailIds = Array.from(checkboxes).map(checkbox => checkbox.dataset.id);
+    console.log(emailIds)
+
+    if (emailIds.length === 0) {
+        alert('Select at least one email to delete.');
+        return;
+    }
+
+    const response = await fetch('/delete-emails', {
+        method: 'DELETE',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ emailIds }),
+    });
+
+    const result = await response.json();
+    alert(result.message);
+
+    // Refresh the email list after deletion
+    fetchEmails();
+    }
+
+
+    // del sing email
+    async function deleteSelectedEmail() {
+    const emailIds = [cur_email];
+    
+    console.log("hererere")
+    const response = await fetch('/delete-emails', {
+        method: 'DELETE',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ emailIds }),
+    });
+
+    const result = await response.json();
+    alert(result.message);
+
+    // Refresh the email list after deletion
+    fetchEmails();
+    showOutbox();
+    }
+
+    function showOutbox(){
+        document.getElementById('email').style.display = 'none';
+        document.getElementById('email-controls').style.display = 'none';
+        document.getElementById('outbox').style.display = 'block';
+        document.getElementById('del_but').style.display = 'block';
+    }
+
+    function showEmailPage(){
+        document.getElementById('email').style.display = 'flex';
+        document.getElementById('email-controls').style.display = 'flex';
+        document.getElementById('outbox').style.display = 'none';
+        document.getElementById('del_but').style.display = 'none';
+    }
+
+    </script>
+</body>
+</html>
